@@ -1,0 +1,25 @@
+@import 'tailwindcss';
+
+@font-face {
+  font-family: 'Noe Display';
+  src: url('./assets/FontsFree-Net-NoeDisplay-Bold.ttf');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-family--landing: 'Noe Display', sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: 'Roboto';
+  }
+}
+
+@layer components {
+  .font-noe {
+    font-family: var(--font-family--landing);
+  }
+}
