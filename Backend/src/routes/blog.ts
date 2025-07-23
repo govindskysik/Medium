@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { initMiddleware } from "../middleware";
 import { PrismaClient } from "@prisma/client/edge";
 import { withAccelerate } from "@prisma/extension-accelerate";
+import { createBlogSchema, updateBlogSchema } from "@aroult/common";
 
 interface Bindings {
   DATABASE_URL: string;
@@ -16,16 +17,17 @@ export const blogRouter = new Hono<{
 //@ts-ignore
 initMiddleware(blogRouter);
 
-blogRouter.get("/ping", (c) => {
-    return c.json({ message: "pong" });
-});
-
 blogRouter.post("/create", async (c) => {
   const userId = c.get("jwtPayload").id;
   const prisma = new PrismaClient({
     datasourceUrl: c.env?.DATABASE_URL,
   }).$extends(withAccelerate());
   const body = await c.req.json();
+  const result = createBlogSchema.safeParse(body);
+  if (!result.success) {
+    c.status(400);
+    return c.json({ error: "Invalid input", details: result.error.issues });
+  }
   try {
     const blog = await prisma.post.create({
       data: {
@@ -48,6 +50,11 @@ blogRouter.put("/update", async (c) => {
   }).$extends(withAccelerate());
 
   const body = await c.req.json();
+  const result = updateBlogSchema.safeParse(body);
+  if (!result.success) {
+    c.status(400);
+    return c.json({ error: "Invalid input", details: result.error.issues });
+  }
   try {
     const blog = await prisma.post.update({
       where: {

@@ -10,9 +10,11 @@ const app = new Hono<{
   };
 }>();
 
+app.get("/", (c) => {
+  return c.text("Welcome to the Medium Backend API");
+});
+
 app.route("/api/v1/user", userRouter);
 app.route("/api/v1/blog", blogRouter);
-
-
 
 export default app;

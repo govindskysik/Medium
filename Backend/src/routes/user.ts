@@ -3,6 +3,8 @@ import { PrismaClient } from "@prisma/client/edge";
 import { withAccelerate } from "@prisma/extension-accelerate";
 import { sign, verify } from "hono/jwt";
 
+import {signinSchema, updateUserSchema, signupSchema} from "@aroult/common";
+
 export const userRouter = new Hono<{
   Bindings: {
     DATABASE_URL: string;
@@ -15,12 +17,18 @@ userRouter.post("/signup", async (c) => {
     datasourceUrl: c.env.DATABASE_URL,
   }).$extends(withAccelerate());
   const body = await c.req.json();
+  const result = signupSchema.safeParse(body);
+  if (!result.success) {
+    c.status(400);
+    return c.json({ error: "Invalid input" ,
+      details : result.error.issues });
+  }
   try {
     const user = await prisma.user.create({
       data: {
-        email: body.email,
-        password: body.password,
-        name: body.name,
+      email: body.email,
+      password: body.password,
+      name: body.name ?? undefined,
       },
     });
     const jwt = await sign({ id: user.id }, c.env.JWT_SECRET);
@@ -42,6 +50,11 @@ userRouter.post("/signin", async (c) => {
   }).$extends(withAccelerate());
 
   const body = await c.req.json();
+  const result = signinSchema.safeParse(body);
+  if (!result.success) {
+    c.status(400);
+    return c.json({ error: "Invalid input", details: result.error.issues });
+  }
   try {
     const user = await prisma.user.findUnique({
       where: {
@@ -73,6 +86,11 @@ userRouter.put("/user", async (c) => {
   }).$extends(withAccelerate());
 
   const body = await c.req.json();
+  const result = updateUserSchema.safeParse(body);
+  if (!result.success) {
+    c.status(400);
+    return c.json({ error: "Invalid input", details: result.error.issues });
+  }
 
   try {
     const authHeader = c.req.header("Authorization");
