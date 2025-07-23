@@ -42,24 +42,29 @@ userRouter.post("/signin", async (c) => {
   }).$extends(withAccelerate());
 
   const body = await c.req.json();
-  const user = await prisma.user.findUnique({
-    where: {
-      email: body.email,
-    },
-  });
+  try {
+    const user = await prisma.user.findUnique({
+      where: {
+        email: body.email,
+      },
+    });
 
-  if (!user) {
-    c.status(403);
-    return c.json({ error: "user not found" });
-  }
-
-  const jwt = await sign({ id: user.id }, c.env.JWT_SECRET);
-  return c.json(
-    { jwt, user },
-    {
-      status: 200,
+    if (!user) {
+      c.status(403);
+      return c.json({ error: "user not found" });
     }
-  );
+
+    const jwt = await sign({ id: user.id }, c.env.JWT_SECRET);
+    return c.json(
+      { jwt, user },
+      {
+        status: 200,
+      }
+    );
+  } catch (e) {
+    c.status(500);
+    return c.json({ error: "error while signing in" });
+  }
 });
 
 userRouter.put("/user", async (c) => {
@@ -69,32 +74,37 @@ userRouter.put("/user", async (c) => {
 
   const body = await c.req.json();
 
-  const authHeader = c.req.header("Authorization");
-  if (!authHeader) {
-    c.status(403);
-    return c.json({ error: "unauthorized" });
+  try {
+    const authHeader = c.req.header("Authorization");
+    if (!authHeader) {
+      c.status(403);
+      return c.json({ error: "unauthorized" });
+    }
+
+    const userId = (await verify(authHeader, c.env.JWT_SECRET)) as { id: string };
+
+    if (!userId || typeof userId.id !== "string") {
+      c.status(403);
+      return c.json({ error: "unauthorized" });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: userId.id },
+      data: {
+        name: body.name,
+        email: body.email,
+      },
+    });
+
+    return c.json({
+      data: {
+        name: user.name,
+        email: user.email,
+        id: user.id,
+      },
+    });
+  } catch (e) {
+    c.status(500);
+    return c.json({ error: "error while updating user" });
   }
-
-  const userId = (await verify(authHeader, c.env.JWT_SECRET)) as { id: string };
-
-  if (!userId || typeof userId.id !== "string") {
-    c.status(403);
-    return c.json({ error: "unauthorized" });
-  }
-
-  const user = await prisma.user.update({
-    where: { id: userId.id },
-    data: {
-      name: body.name,
-      email: body.email,
-    },
-  });
-
-  return c.json({
-    data: {
-      name: user.name,
-      email: user.email,
-      id: user.id,
-    },
-  });
 });
